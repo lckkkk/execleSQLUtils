@@ -1,0 +1,143 @@
+package excel;
+
+import org.apache.commons.lang3.CharSequenceUtils;
+import org.apache.commons.lang3.CharUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+
+
+import java.io.*;
+
+
+/**
+ * excel建表工具类
+ */
+public class ExcelNewTable {
+    public static void main(String[] args) {
+        String filePath = "C:/Users/dell/Desktop/劳务系统建表.xls";
+        String newFilePath = "C:/Users/dell/Desktop/劳务系统建表.sql";
+
+        File file = new File(newFilePath);
+        if (file.exists()) {
+            file.delete();
+        }
+
+        readExcel(filePath, newFilePath);
+    }
+
+    public static void readExcel(String filePath, String newFilePath) {
+
+        try {
+            //获取工作簿
+            HSSFWorkbook hssfWorkbook = new HSSFWorkbook(new FileInputStream(filePath));
+            //获取工作簿的工作表数量
+            int sheetsNum = hssfWorkbook.getNumberOfSheets();
+            //遍历读取每个工作表
+            for (int i = 0; i < sheetsNum; i++) {
+                //获取工作表注释
+                String tableComment = hssfWorkbook.getSheetName(i);
+                //获取工作表
+                HSSFSheet sheet = hssfWorkbook.getSheet(tableComment);
+                //获取表名
+                String sheetName = sheet.getRow(1).getCell(4).toString();
+                //获取最后一行
+                int lastRowNum = sheet.getLastRowNum();
+                //建表语句开头
+                String tableHead = "CREATE TABLE " + sheetName + "(";
+                String tableEnd = ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin ROW_FORMAT=DYNAMIC COMMENT=" + "'" + tableComment + "';";
+
+                writeTxt("##################################", newFilePath);
+                writeTxt("##################################", newFilePath);
+                writeTxt("#" + tableComment, newFilePath);
+                writeTxt("##################################", newFilePath);
+                //写入头
+                writeTxt(tableHead, newFilePath);
+                //写入id
+                writeTxt("      id bigint(20) NOT NULL comment '主键id',", newFilePath);
+                //遍历写入excel字段
+                for (Row row : sheet) {
+                    int curRowNum = row.getRowNum();
+                    if (row == sheet.getRow(0)) {
+                        continue;
+                    }
+                    Cell filedName = row.getCell(0);
+                    Cell dataType = row.getCell(1);
+                    Cell required = row.getCell(2);
+                    Cell annotate = row.getCell(3);
+                    String req;
+                    if (required.toString().equals("是")) {
+                        req = "NOT NULL";
+                    } else {
+                        req = "NULL";
+                    }
+                    if (StringUtils.isBlank(filedName.toString())) {
+                        continue;
+                    }
+
+                    String content = trimStr(filedName.toString()) + " " + trimStr(dataType.toString()) + " " + req + " comment '" + annotate + "',";
+                    writeTxt("      "+content, newFilePath);
+                }
+                //写入固定字段
+                writeTxt("      create_by varchar(64) DEFAULT NULL COMMENT '创建人',", newFilePath);
+                writeTxt("      create_time datetime DEFAULT NULL COMMENT '创建时间',", newFilePath);
+                writeTxt("      update_by varchar(64) DEFAULT NULL COMMENT '更新人',", newFilePath);
+                writeTxt("      update_time datetime DEFAULT NULL COMMENT '更新时间',", newFilePath);
+                writeTxt("      remarks varchar(255) DEFAULT NULL COMMENT '备注',", newFilePath);
+                writeTxt("      del_flag char(1) DEFAULT NULL COMMENT '删除标记（0正常、1删除）',", newFilePath);
+                //写入主键
+                writeTxt("PRIMARY KEY(id)", newFilePath);
+                //写入结尾
+                writeTxt(tableEnd, newFilePath);
+                writeTxt("##################################", newFilePath);
+                writeTxt("", newFilePath);
+                writeTxt("", newFilePath);
+                System.out.println("成功生成：" + tableComment);
+            }
+
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    //写入目标文件
+    public static void writeTxt(String content, String newFileParh) {
+        try {
+            //如果文件不存在，新建
+            File file = new File(newFileParh);
+            if (!file.exists()) {
+                file.createNewFile();
+            }
+            //获取文件写入对象，并指定可append
+            FileWriter fw = new FileWriter(newFileParh, true);
+            //获取写入缓冲区对象
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write(content);
+            //每写一次换行
+            bw.newLine();
+            bw.close();
+            fw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * @Description 去除空格（中文全角空格和半角空格）
+     * @Author liangchen
+     * @Date 2019/8/30 9:55
+     * @Param [str]
+     * @return void
+     **/
+    public static String trimStr(String str) {
+        str = str.replace((char) 12288, ' ');
+        str = str.trim();
+        return str;
+    }
+}
