@@ -1,46 +1,44 @@
 package excel;
 
-import org.apache.commons.lang3.CharSequenceUtils;
-import org.apache.commons.lang3.CharUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.poi.hssf.usermodel.HSSFSheet;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-
+import org.apache.poi.openxml4j.exceptions.InvalidFormatException;
+import org.apache.poi.ss.usermodel.*;
 
 import java.io.*;
 
-
 /**
- * excel建表工具类
- */
+ * @Description excel 转建表 sql
+ * @Author liangchen
+ * @Date 2019/8/30 17:48
+ * @Param
+ * @return
+ **/
 public class ExcelNewTable {
     public static void main(String[] args) {
-        String filePath = "C:/Users/dell/Desktop/劳务系统建表.xls";
+        String filePath = "C:/Users/dell/Desktop/劳务系统建表.xlsx";
         String newFilePath = "C:/Users/dell/Desktop/劳务系统建表.sql";
 
         File file = new File(newFilePath);
         if (file.exists()) {
             file.delete();
         }
-
-        readExcel(filePath, newFilePath);
+        String suffix = filePath.substring(filePath.lastIndexOf("."));
+            readExcel(filePath, newFilePath);
     }
 
     public static void readExcel(String filePath, String newFilePath) {
 
         try {
             //获取工作簿
-            HSSFWorkbook hssfWorkbook = new HSSFWorkbook(new FileInputStream(filePath));
+            Workbook workbook = WorkbookFactory.create(new FileInputStream(filePath));
             //获取工作簿的工作表数量
-            int sheetsNum = hssfWorkbook.getNumberOfSheets();
+            int sheetsNum = workbook.getNumberOfSheets();
             //遍历读取每个工作表
             for (int i = 0; i < sheetsNum; i++) {
                 //获取工作表注释
-                String tableComment = hssfWorkbook.getSheetName(i);
+                String tableComment = workbook.getSheetName(i);
                 //获取工作表
-                HSSFSheet sheet = hssfWorkbook.getSheet(tableComment);
+                Sheet sheet = workbook.getSheet(tableComment);
                 //获取表名
                 String sheetName = sheet.getRow(1).getCell(4).toString();
                 //获取最后一行
@@ -78,9 +76,10 @@ public class ExcelNewTable {
                     }
 
                     String content = trimStr(filedName.toString()) + " " + trimStr(dataType.toString()) + " " + req + " comment '" + annotate + "',";
-                    writeTxt("      "+content, newFilePath);
+                    writeTxt("      " + content, newFilePath);
                 }
                 //写入固定字段
+                writeTxt("      requestcode varchar(64) DEFAULT NULL COMMENT '请求序列编码',", newFilePath);
                 writeTxt("      create_by varchar(64) DEFAULT NULL COMMENT '创建人',", newFilePath);
                 writeTxt("      create_time datetime DEFAULT NULL COMMENT '创建时间',", newFilePath);
                 writeTxt("      update_by varchar(64) DEFAULT NULL COMMENT '更新人',", newFilePath);
@@ -101,6 +100,8 @@ public class ExcelNewTable {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InvalidFormatException e) {
             e.printStackTrace();
         }
 
@@ -129,11 +130,11 @@ public class ExcelNewTable {
     }
 
     /**
+     * @return void
      * @Description 去除空格（中文全角空格和半角空格）
      * @Author liangchen
      * @Date 2019/8/30 9:55
      * @Param [str]
-     * @return void
      **/
     public static String trimStr(String str) {
         str = str.replace((char) 12288, ' ');
